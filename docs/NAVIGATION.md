@@ -7,13 +7,13 @@ These are extracts from the refactored source, not additional files to load. The
 ```html
 <header class="site-header">
       <nav class="container nav" aria-label="Main">
-        <a class="brand" href="#about" aria-label="Giridhar Reddy Karnati — home"><span class="brand-mark" aria-hidden="true">GRK<span>.</span></span><span class="brand-name">Giridhar Reddy Karnati</span></a>
+        <a class="brand" href="/" aria-label="Giridhar Reddy Karnati — home"><span class="brand-mark" aria-hidden="true">GRK<span>.</span></span><span class="brand-name">Giridhar Reddy Karnati</span></a>
         <div class="nav-right">
           <button class="icon-btn nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path class="menu-line-top" d="M4 8h16" /><path class="menu-line-bottom" d="M4 16h16" /></svg>
           </button>
           <ul class="nav-links" id="nav-links">
-            <li><a href="#about">About</a></li>
+            <li><a href="/" data-section="about">About</a></li>
             <li><a href="#research">Research</a></li>
             <li><a href="#news">News</a></li>
             <li><a href="#projects">Projects</a></li>
@@ -33,7 +33,7 @@ These are extracts from the refactored source, not additional files to load. The
     </header>
 ```
 
-The six home links target sections in document order. Keep the real classes, content and headings in index.html. CV links to cv.html rather than a nonexistent section.
+The six home links target sections in document order. About uses `/` with `data-section="about"` to keep the URL clean while retaining scrolling and active states. main.js also replaces the legacy homepage `#about` fragment with `/` using the History API. Keep the real classes, content and headings in index.html. CV links to cv.html rather than a nonexistent section.
 
 ```html
 <section id="about" tabindex="-1" aria-labelledby="name">...</section>
@@ -228,6 +228,18 @@ Load main.js with defer. Inside its existing IIFE, root is document.documentElem
       // Let the browser handle scrolling, URL history and reduced-motion CSS.
       // Move keyboard focus to the chosen section without triggering a second scroll.
       const href = link.getAttribute("href");
+      if (link.dataset.section === "about") {
+        const target = document.getElementById("about");
+        if (target) {
+          event.preventDefault();
+          if (window.location.pathname !== "/" || window.location.hash) {
+            window.history.pushState(null, "", "/" + window.location.search);
+          }
+          target.focus({ preventScroll: true });
+          target.scrollIntoView({ block: "start" });
+        }
+        return;
+      }
       if (href?.startsWith("#")) {
         const target = document.getElementById(href.slice(1));
         target?.focus({ preventScroll: true });
@@ -255,8 +267,9 @@ Load main.js with defer. Inside its existing IIFE, root is document.documentElem
     }
   }
 
-  const sectionLinks = [...document.querySelectorAll('.nav-links a[href^="#"]')];
-  const sections = sectionLinks.map((link) => document.getElementById(link.hash.slice(1))).filter(Boolean);
+  const sectionLinks = [...document.querySelectorAll('.nav-links a[data-section], .nav-links a[href^="#"]')];
+  const sectionId = (link) => link.dataset.section || link.hash.slice(1);
+  const sections = sectionLinks.map((link) => document.getElementById(sectionId(link))).filter(Boolean);
   if (sections.length && header) {
     let scheduled = false;
     const syncActiveSection = () => {
@@ -271,7 +284,7 @@ Load main.js with defer. Inside its existing IIFE, root is document.documentElem
         active = sections[sections.length - 1];
       }
       sectionLinks.forEach((link) => {
-        if (link.hash === `#${active.id}`) link.setAttribute("aria-current", "location");
+        if (sectionId(link) === active.id) link.setAttribute("aria-current", "location");
         else link.removeAttribute("aria-current");
       });
     };

@@ -7,6 +7,17 @@
 
   const root = document.documentElement;
 
+  // GitHub Pages cannot redirect a fragment server-side. Normalize legacy About
+  // links in place so bookmarks keep working without a second page request.
+  const normalizeAboutUrl = () => {
+    const { pathname, hash, search } = window.location;
+    if ((pathname === "/" || pathname === "/index.html") && hash === "#about") {
+      window.history.replaceState(window.history.state, "", "/" + search);
+    }
+  };
+  normalizeAboutUrl();
+  window.addEventListener("hashchange", normalizeAboutUrl);
+
   /* ---------- Light / dark theme toggle ----------
      The early <script> in each page's <head> applies a saved choice before
      the page paints (no flash). This part handles the button. */
@@ -63,6 +74,18 @@
       // Let the browser handle scrolling, URL history and reduced-motion CSS.
       // Move keyboard focus to the chosen section without triggering a second scroll.
       const href = link.getAttribute("href");
+      if (link.dataset.section === "about") {
+        const target = document.getElementById("about");
+        if (target) {
+          event.preventDefault();
+          if (window.location.pathname !== "/" || window.location.hash) {
+            window.history.pushState(null, "", "/" + window.location.search);
+          }
+          target.focus({ preventScroll: true });
+          target.scrollIntoView({ block: "start" });
+        }
+        return;
+      }
       if (href?.startsWith("#")) {
         const target = document.getElementById(href.slice(1));
         target?.focus({ preventScroll: true });
@@ -90,8 +113,9 @@
     }
   }
 
-  const sectionLinks = [...document.querySelectorAll('.nav-links a[href^="#"]')];
-  const sections = sectionLinks.map((link) => document.getElementById(link.hash.slice(1))).filter(Boolean);
+  const sectionLinks = [...document.querySelectorAll('.nav-links a[data-section], .nav-links a[href^="#"]')];
+  const sectionId = (link) => link.dataset.section || link.hash.slice(1);
+  const sections = sectionLinks.map((link) => document.getElementById(sectionId(link))).filter(Boolean);
   if (sections.length && header) {
     let scheduled = false;
     const syncActiveSection = () => {
@@ -106,7 +130,7 @@
         active = sections[sections.length - 1];
       }
       sectionLinks.forEach((link) => {
-        if (link.hash === `#${active.id}`) link.setAttribute("aria-current", "location");
+        if (sectionId(link) === active.id) link.setAttribute("aria-current", "location");
         else link.removeAttribute("aria-current");
       });
     };

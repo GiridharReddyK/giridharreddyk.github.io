@@ -32,6 +32,7 @@ const nav = new Element(), theme = new Element(), main = new Element();
 const ids = ['about', 'research', 'news', 'projects', 'publications', 'contact'];
 const sections = ids.map((id, i) => Object.assign(new Element(), {id, top: i * 700 + 100}));
 const links = ids.map(id => new Element({href: '#' + id}));
+links[0].attrs.href = "/"; links[0].dataset.section = "about";
 const cv = new Element({href: 'cv.html'});
 nav.children = [...links, cv]; nav.querySelector = () => links[0];
 header.children = [toggle, nav, theme];
@@ -55,7 +56,7 @@ const document = Object.assign(new Element(), {
       main, '[data-filters]':filter}[selector] ?? null;
   },
   querySelectorAll(selector) {
-    return {'.nav-links a[href^="#"]':links,'[data-panel]':[panelBtn],
+    return {'.nav-links a[data-section], .nav-links a[href^="#"]':links,'[data-panel]':[panelBtn],
       '.copy-btn':[],'[data-category]':cards,'[data-year]':[year]}[selector] ?? [];
   },
   getElementById(id) {
@@ -64,6 +65,12 @@ const document = Object.assign(new Element(), {
 });
 const window = Object.assign(new Element(), {
   scrollY: 0, innerHeight: 800,
+  location: {pathname: "/index.html", hash: "#about", search: ""},
+  history: {
+    state: null,
+    replaceState(state, title, url) { this.replaced = url; window.location.pathname = "/"; window.location.hash = ""; },
+    pushState(state, title, url) { this.pushed = url; window.location.pathname = "/"; window.location.hash = ""; }
+  },
   matchMedia(query) { return query.includes('639px') ? media : {matches: false}; },
   requestAnimationFrame: callback => callback()
 });
@@ -75,6 +82,20 @@ vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../assets/js/main.js'),
 const active = () => links.filter(l => l.getAttribute('aria-current') === 'location');
 assert.equal(active()[0], links[0]);
 assert(header.classList.contains('nav-ready'));
+assert.equal(window.history.replaced, '/');
+window.location.pathname = '/index.html'; window.location.hash = '#projects';
+sections[0].scrollIntoView = () => { sections[0].scrolled = true; };
+let prevented = false;
+nav.emit('click', {target: links[0], preventDefault() { prevented = true; }});
+assert(prevented); assert.equal(window.history.pushed, '/');
+assert.equal(document.activeElement, sections[0]); assert(sections[0].scrolled);
+window.location.pathname = '/projects.html'; window.location.hash = '#about';
+window.history.replaced = null; window.emit('hashchange');
+assert.equal(window.history.replaced, null);
+window.location.pathname = '/'; window.location.hash = '#contact';
+window.emit('hashchange'); assert.equal(window.history.replaced, null);
+window.location.hash = '#about'; window.emit('hashchange');
+assert.equal(window.history.replaced, '/');
 toggle.emit('click');
 assert.equal(toggle.getAttribute('aria-expanded'), 'true');
 assert.equal(document.activeElement, links[0]);
