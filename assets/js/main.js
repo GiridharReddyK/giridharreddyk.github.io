@@ -39,27 +39,91 @@
     });
   }
 
-  /* ---------- Mobile navigation ---------- */
+  /* ---------- Navigation: native anchors, mobile disclosure and scroll state ---------- */
+  const header = document.querySelector(".site-header");
   const navToggle = document.querySelector(".nav-toggle");
   const navLinks = document.getElementById("nav-links");
-  if (navToggle && navLinks) {
-    const setNav = (open) => {
+  const mobileNav = window.matchMedia("(max-width: 639px)");
+  if (header && navToggle && navLinks) {
+    const setNav = (open, returnFocus = false) => {
       navLinks.classList.toggle("is-open", open);
       navToggle.setAttribute("aria-expanded", String(open));
       navToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-      if (open) navLinks.querySelector("a").focus();
+      if (returnFocus) navToggle.focus();
     };
-
     navToggle.addEventListener("click", () => {
-      setNav(!navLinks.classList.contains("is-open"));
+      const open = !navLinks.classList.contains("is-open");
+      setNav(open);
+      if (open) navLinks.querySelector("a")?.focus();
     });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && navLinks.classList.contains("is-open")) {
-        setNav(false);
-        navToggle.focus();
+    navLinks.addEventListener("click", (event) => {
+      const link = event.target.closest("a");
+      if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      setNav(false);
+      // Let the browser handle scrolling, URL history and reduced-motion CSS.
+      // Move keyboard focus to the chosen section without triggering a second scroll.
+      const href = link.getAttribute("href");
+      if (href?.startsWith("#")) {
+        const target = document.getElementById(href.slice(1));
+        target?.focus({ preventScroll: true });
       }
     });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && navLinks.classList.contains("is-open")) setNav(false, true);
+    });
+    document.addEventListener("click", (event) => {
+      if (!header.contains(event.target)) setNav(false);
+    });
+    header.addEventListener("focusout", (event) => {
+      if (!header.contains(event.relatedTarget)) setNav(false);
+    });
+    mobileNav.addEventListener("change", () => {
+      const focusedLink = navLinks.contains(document.activeElement);
+      setNav(false, mobileNav.matches && focusedLink);
+    });
+    // Added only after listeners exist: mobile links stay visible if JS fails.
+    header.classList.add("nav-ready");
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(() => {
+        root.style.setProperty("--header-h", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      }).observe(header);
+    }
+  }
+
+  const sectionLinks = [...document.querySelectorAll('.nav-links a[href^="#"]')];
+  const sections = sectionLinks.map((link) => document.getElementById(link.hash.slice(1))).filter(Boolean);
+  if (sections.length && header) {
+    let scheduled = false;
+    const syncActiveSection = () => {
+      scheduled = false;
+      const offset = header.getBoundingClientRect().height + 24;
+      let active = sections[0];
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= offset) active = section;
+      }
+      // The last short section may never reach the activation line.
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+        active = sections[sections.length - 1];
+      }
+      sectionLinks.forEach((link) => {
+        if (link.hash === `#${active.id}`) link.setAttribute("aria-current", "location");
+        else link.removeAttribute("aria-current");
+      });
+    };
+    const scheduleSync = () => {
+      if (!scheduled) {
+        scheduled = true;
+        window.requestAnimationFrame(syncActiveSection);
+      }
+    };
+    window.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener("resize", scheduleSync);
+    window.addEventListener("hashchange", scheduleSync);
+    window.addEventListener("load", scheduleSync);
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(scheduleSync).observe(document.querySelector("main"));
+    }
+    syncActiveSection();
   }
 
   /* ---------- Publication panels (Summary / Bib) ----------

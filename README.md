@@ -7,13 +7,13 @@ The site is a small static project written in plain HTML, CSS and JavaScript. It
 ## Features
 
 - Four content pages: home (profile, news, selected publications), publications (with BibTeX and summaries), projects (filterable cards) and a web CV
-- Responsive layout with a mobile navigation menu
+- Sticky translucent navigation with section anchors, scroll tracking and a mobile-only disclosure below 640px
 - Light and dark themes that follow the system preference, with a manual toggle that persists across visits
 - Print stylesheet for the CV page (A4), including a QR code back to the site, which is also the source of the downloadable PDF
 - Progressive enhancement: cross-fading page navigation and an animated project filter using the View Transitions API, disabled for visitors who prefer reduced motion
 - Sharing and search metadata: Open Graph and Twitter cards, JSON-LD structured data (`Person`, plus `CollectionPage` lists for publications and projects), `sitemap.xml` and `robots.txt`
 - Accessibility: semantic landmarks, a skip link that moves focus, visible focus styles, contrast-checked colours, links that do not rely on colour alone and reduced-motion support
-- Performance: no third-party requests, preloaded fonts with metric-matched fallbacks (no layout shift while they load), a responsive hero image and `content-visibility` on long sections
+- Performance: no third-party requests, preloaded fonts with metric-matched fallbacks (no layout shift while they load), a responsive hero image and lazy-loaded project imagery
 
 ## Tech stack
 
@@ -35,7 +35,7 @@ The site is a small static project written in plain HTML, CSS and JavaScript. It
 ├── .nojekyll             Serve files as-is (no Jekyll processing)
 └── assets/
     ├── css/style.css     Stylesheet: design tokens, themes, print styles
-    ├── js/main.js        Theme toggle, mobile nav, publication panels, project filters
+    ├── js/main.js        Theme, section tracking, mobile nav, panels, project filters
     ├── fonts/            Self-hosted IBM Plex (WOFF2) and its licence
     ├── img/              Favicon, profile photo, link-preview card, project figures
     └── pdf/              Downloadable CV
@@ -52,6 +52,20 @@ python3 -m http.server 8000
 ```
 
 Then open <http://localhost:8000>. There is no build step: edit the relevant HTML, CSS or JavaScript files and reload the page. The header and footer are plain HTML repeated on each page, so navigation changes need to be applied to every page.
+
+## Review and validation
+
+The navigation implementation and design review are documented in [docs/REVIEW.md](docs/REVIEW.md).
+
+Run the dependency-free checks with:
+
+```bash
+python3 scripts/check-site.py
+node --check assets/js/main.js
+node scripts/check-navigation.cjs
+```
+
+The interaction checks use simulated DOM geometry. They do not replace testing in an actual browser.
 
 ## Deployment
 
