@@ -1099,6 +1099,13 @@ h4 {
   font-size: 0.82rem;
 }
 
+/* Credential IDs wrap on narrow screens without changing the stored identifier. */
+.credential-id code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- 8. CV ---------- */
 .cv-actions {
   display: flex;
